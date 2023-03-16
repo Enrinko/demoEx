@@ -2,13 +2,19 @@ package com.vojtechruzicka.javafxweaverexample;
 
 
 
+import com.vojtechruzicka.javafxweaverexample.entyti.JournalEntity;
+import com.vojtechruzicka.javafxweaverexample.service.JournalService;
 import com.vojtechruzicka.javafxweaverexample.service.UserService;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.GridPane;
 import javafx.util.Pair;
 import net.rgielen.fxweaver.core.FxmlView;
@@ -21,34 +27,42 @@ import static javafx.scene.control.ButtonType.CANCEL;
 @Component
 @FxmlView("main-stage.fxml")
 public class MyController {
+    @FXML
+    private AnchorPane adminPane;
+    @FXML
+    private TextField dob;
 
     @FXML
-    private Button bSave;
+    private TableColumn<JournalEntity, String> dobCol;
 
     @FXML
-    private TableColumn<?, ?> id;
+    private TextField phone;
 
     @FXML
-    private TextField tSurname;
+    private TableColumn<JournalEntity, String> phoneCol;
 
     @FXML
-    private TableView<?> table;
+    private TextField surFirstSecondName;
 
     @FXML
-    void onSave(ActionEvent event) {
+    private TableColumn<JournalEntity, String> surFirstSecondNameCol;
 
-    }
+    @FXML
+    private TableView<JournalEntity> table;
 
-   private  UserService userService;
+    private UserService userService;
+    private JournalService journalService;
+    private ObservableList<JournalEntity> journalList = FXCollections.observableArrayList();
 
    //конструктор, используется для определения сервисного слоя
-    public MyController(UserService userService) {
+    public MyController(UserService userService, JournalService journalService) {
         this.userService = userService;
+        this.journalService = journalService;
     }
 
    //настройка программы в зависимости от роли
    private void isRol(int rol){
-
+        adminPane.setVisible(rol == 0);
    }
     // создание диалогового окна логин/пароль
     private void loginDialog(){
@@ -125,6 +139,53 @@ public class MyController {
 
     private void initialize() {
         loginDialog(); // вызов диалогового окна логин/пароль
+        journalService.getAll().forEach(journalList::add);
+
+        dobCol.setCellValueFactory(new PropertyValueFactory<JournalEntity, String>("dob"));
+        phoneCol.setCellValueFactory(new PropertyValueFactory<JournalEntity, String>("phone"));
+        surFirstSecondNameCol.setCellValueFactory(new PropertyValueFactory<JournalEntity, String>("surFirstSecondName"));
+        table.setItems(journalList);
+
+        table.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> showJournalEntityDetails(newValue)
+        );
+    }
+
+    @FXML
+    void onDelete(ActionEvent event) {
+        int selectedIndex = table.getSelectionModel().getSelectedIndex();
+        if (selectedIndex >= 0) {
+            journalService.delete(table.getItems().get(selectedIndex).getId());
+            table.getItems().remove(selectedIndex);
+        }   else {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Нет выбора");
+            alert.setHeaderText("Никто не выбран");
+            alert.setContentText("Пожалуйста выберите человека в таблице");
+            alert.showAndWait();
+        }
+    }
+
+    @FXML
+    void onSave(ActionEvent event) {
+        if (!dob.equals("") && !surFirstSecondName.equals("")) {
+            journalList.add(journalService.save(new JournalEntity(dob.getText(), phone.getText(), surFirstSecondName.getText())));
+            dob.setText("");
+            phone.setText("");
+            surFirstSecondName.setText("");
+        }
+    }
+
+    private void showJournalEntityDetails(JournalEntity journal) {
+        if (null != journal) {
+            dob.setText(journal.getDob());
+            phone.setText(journal.getPhone());
+            surFirstSecondName.setText(journal.getSurFirstSecondName());
+        }   else {
+            dob.setText("");
+            phone.setText("");
+            surFirstSecondName.setText("");
+        }
     }
 
 }
